@@ -1,0 +1,9 @@
+{
+	"branch": "master",                                             
+	"generateDocsOnPush": true,                                    
+	"docsInclude": ["src/.*.(ts|tsx)"],                        
+	"docsExclude": ["docs.json", "src/.*.md"],                                
+	"testFileExtension": ".test.ts",                              
+	"testsInclude": ["src/.*.(ts|tsx)"],                          
+	"testsExclude": ["docs.json", "src/.*.md", "src/.*.test.ts"]  
+}

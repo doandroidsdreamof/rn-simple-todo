@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-export const clientRegisterSchema = z
+export const registerSchema = z
   .object({
     email: z
       .string({
@@ -31,3 +31,5 @@ export const clientRegisterSchema = z
       });
     }
   });
+
+export type IRegister = z.infer<typeof registerSchema>;

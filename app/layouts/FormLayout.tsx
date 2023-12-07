@@ -1,11 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
-interface IFormLayoutprops {
-  children: React.ReactNode;
-}
+import { IWrapperProps } from "../types/interface";
 
-export default function FormLayout({ children }: IFormLayoutprops) {
+export default function FormLayout({ children }: IWrapperProps) {
   return <View style={styles.container}>{children}</View>;
 }
 
@@ -14,7 +12,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    width: 312,
-    alignSelf: "center"
+    paddingHorizontal: 44,
+    alignSelf: "center",
+    backgroundColor: "white"
   }
 });

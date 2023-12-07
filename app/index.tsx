@@ -1,18 +1,16 @@
 import * as eva from "@eva-design/eva";
+import { createDrawerNavigator } from "@react-navigation/drawer";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Session } from "@supabase/supabase-js";
 import { ApplicationProvider, IconRegistry } from "@ui-kitten/components";
 import { EvaIconsPack } from "@ui-kitten/eva-icons";
-import React, { useEffect, useState } from "react";
-import { Provider } from "react-redux";
+import React from "react";
+import "react-native-gesture-handler";
 
-import { supabase } from "./lib/supabase";
+import DrawerContent from "./components/DrawerContent";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import HomeScreen from "./screens/Home";
 import SignInScreen from "./screens/SignIn";
 import SignUpScreen from "./screens/SignUp";
-import { useAppSelector } from "./store/hooks";
-import { store } from "./store/store";
 
 type ScreenLists = {
   Home: undefined;
@@ -20,55 +18,42 @@ type ScreenLists = {
   SignUp: undefined;
 };
 
-const Stack = createNativeStackNavigator<ScreenLists>();
+const Drawer = createDrawerNavigator<ScreenLists>();
 
 function App() {
-  const isUserSignIn = useAppSelector((state) => state.user.isSignedIn);
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-    console.log("🚀 ~ file: index.tsx:24 ~ App ~ session:", session);
-  }, []);
+  const { session } = useAuth();
 
   return (
     <NavigationContainer independent>
-      <Stack.Navigator
-        screenOptions={{
-          headerTitleAlign: "center"
-        }}>
-        {isUserSignIn ? (
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{
-              title: "Todo App"
-            }}
-          />
+      <Drawer.Navigator drawerContent={(props) => <DrawerContent {...props} />} screenOptions={{ drawerPosition: "left" }}>
+        {session ? (
+          <>
+            <Drawer.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{
+                title: "Todo App"
+              }}
+            />
+          </>
         ) : (
           <>
-            <Stack.Screen name="SignIn" options={{ title: "Sign in" }} component={SignInScreen} />
-            <Stack.Screen name="SignUp" options={{ title: "Sign up" }} component={SignUpScreen} />
+            <Drawer.Screen name="SignIn" options={{ title: "Sign in" }} component={SignInScreen} />
+            <Drawer.Screen name="SignUp" options={{ title: "Sign up" }} component={SignUpScreen} />
           </>
         )}
-      </Stack.Navigator>
+      </Drawer.Navigator>
     </NavigationContainer>
   );
 }
 
 export default () => {
   return (
-    <Provider store={store}>
+    <AuthProvider>
       <ApplicationProvider {...eva} theme={eva.light}>
         <IconRegistry icons={EvaIconsPack} />
         <App />
       </ApplicationProvider>
-    </Provider>
+    </AuthProvider>
   );
 };

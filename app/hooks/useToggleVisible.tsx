@@ -1,6 +1,6 @@
 import { Icon } from "@ui-kitten/components";
 import React, { useState } from "react";
-import { ImageStyle, TouchableWithoutFeedback } from "react-native";
+import { TouchableWithoutFeedback } from "react-native";
 
 const useToggleVisible = () => {
   const [isVisible, setIsVisible] = useState(true);

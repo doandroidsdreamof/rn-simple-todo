@@ -1,16 +1,16 @@
-import { GoogleSignin, GoogleSigninButton, statusCodes } from "@react-native-google-signin/google-signin";
+import { GoogleSignin, GoogleSigninButton } from "@react-native-google-signin/google-signin";
 import { Link } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Button, Input, Text } from "@ui-kitten/components";
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { ZodIssue } from "zod";
+import { Button, Input, Spinner, Text } from "@ui-kitten/components";
+import { useFormik } from "formik";
+import React, { useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import { toFormikValidationSchema } from "zod-formik-adapter";
 
-import LoginButton from "../components/LoginButton";
 import useToggleVisible from "../hooks/useToggleVisible";
 import FormLayout from "../layouts/FormLayout";
 import { supabase } from "../lib/supabase";
-import { loginSchema, validateLogin } from "../schemas/loginShema";
+import { ISignin, loginSchema } from "../schemas/loginShema";
 
 type RootStackParamList = {
   SignIn: undefined;
@@ -20,74 +20,62 @@ type RootStackParamList = {
 type SignInScreenProps = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export default function SignInScreen({ navigation }: SignInScreenProps) {
-  const { isVisible, toggleVisible, renderIcon } = useToggleVisible();
-  const [errors, setErrors] = useState<ZodIssue[]>([]);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
+  const { isVisible, renderIcon } = useToggleVisible();
+  const [loading, setLoading] = useState(false);
+  const formik = useFormik({
+    initialValues: {
+      email: "",
+      password: ""
+    },
+    validationSchema: toFormikValidationSchema(loginSchema),
+    onSubmit: (values) => {
+      signInWithEmail(values);
+    }
   });
   GoogleSignin.configure({
-    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
-    webClientId: "576679274815-vhkcjasr203115t6am3r7cba2e3dlde9.apps.googleusercontent.com"
+    scopes: [process.env.GOOGLE_SCOPE as string],
+    webClientId: process.env.GOOGLE_WEB_CLIENT_ID
   });
 
-  const handleSubmit = () => {
-    const parsedData = loginSchema.safeParse(formData);
-    console.log("🚀 ~ file: SignIn.tsx:39 ~ handleSubmit ~ parsedData:", parsedData);
-    const { issues } = parsedData.error;
-    console.log("🚀 ~ file: SignIn.tsx:41 ~ handleSubmit ~ issues:", issues);
-  };
-
-  const getError = (path: string) => {
-    const error = errors.find((error) => error.path === path);
-
-    return error ? <small className="text-red-500">{error?.message}</small> : null;
-  };
-
-  const handleLogin = async () => {
+  async function signInWithEmail(value: ISignin) {
+    console.log("🚀 ~ file: SignIn.tsx:42 ~ signInWithEmail ~ value:", value);
     try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      console.log("🚀 ~ file: SignInScreen.tsx:31 ~ handleLogin ~ userInfo:", userInfo);
-      if (userInfo.idToken) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: userInfo.idToken
-        });
-        console.log(error);
-      } else {
-        throw new Error("no ID token present!");
-      }
-    } catch (error: any) {
-      console.log("🚀 ~ file: SignInScreen.tsx:42 ~ handleLogin ~ error:", error);
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // user cancelled the login flow
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        // operation (e.g. sign in) is in progress already
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        // play services not available or outdated
-      } else {
-        // some other error happened
-      }
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword(value);
+      console.log("🚀 ~ file: SignIn.tsx:45 ~ signInWithEmail ~ error:", error);
+      if (error) Alert.alert(error.message);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
     }
-  };
+  }
+
   return (
     <FormLayout>
       <Text status="basic" style={styles.title} category="h3">
         Sign in
       </Text>
       <View style={styles.inputContainer}>
-        <Input onChangeText={(text) => setFormData({ ...formData, email: text })} placeholder="Email" />
+        <Input onChangeText={formik.handleChange("email")} onBlur={formik.handleBlur("email")} placeholder="Email" />
+        {formik.touched.email && formik.errors.email ? <Text style={styles.errorText}>{formik.errors.email}</Text> : null}
         <Input
-          onChangeText={(text) => setFormData({ ...formData, password: text })}
+          onChangeText={formik.handleChange("password")}
+          onBlur={formik.handleBlur("password")}
           accessoryRight={renderIcon}
           secureTextEntry={isVisible}
           placeholder="Password"
         />
+        {formik.touched.password && formik.errors.password ? <Text style={styles.errorText}>{formik.errors.password}</Text> : null}
       </View>
-      <View style={styles.buttonContainer}>
-        <Button onPress={handleSubmit} style={styles.button} size="small">
-          login
+      <View style={[styles.buttonContainer, styles.mt20]}>
+        <Button disabled={loading} onPress={() => formik.handleSubmit()} style={styles.button} size="small">
+          {!loading ? (
+            "login"
+          ) : (
+            <View>
+              <Spinner size="small" />
+            </View>
+          )}
         </Button>
       </View>
       <View style={styles.linkContainer}>
@@ -96,7 +84,7 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
           <Text status="primary">sign up</Text>
         </Link>
       </View>
-      <GoogleSigninButton size={GoogleSigninButton.Size.Wide} color={GoogleSigninButton.Color.Dark} onPress={() => handleLogin()} />
+      <GoogleSigninButton size={GoogleSigninButton.Size.Wide} color={GoogleSigninButton.Color.Dark} onPress={() => console.log("google")} />
     </FormLayout>
   );
 }
@@ -111,16 +99,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
-    gap: 10
+    gap: 15
   },
   button: {
     margin: 2,
     flex: 1
   },
   buttonContainer: {
-    flexDirection: "row"
+    flexDirection: "row",
+    paddingTop: 4,
+    paddingBottom: 4,
+    alignSelf: "stretch"
   },
   title: {
-    marginBottom: 10
+    top: -45
+  },
+  errorText: {
+    marginRight: "auto",
+    color: "red",
+    fontSize: 11
+  },
+  mt20: {
+    marginTop: 20
   }
 });
